@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+option java_multiple_files = true;
+option java_package = "pers.grpc.test";
+option java_outer_classname = "TestProto";
+
+package service.test;
+
+service TestService {
+  rpc DoTest (TestRequest) returns (TestResponse) {}
+}
+
+
+message TestRequest {
+    string requestId = 1;
+    bytes data = 2;
+}
+
+
+message TestResponse {
+    int32 code = 1;
+    string message = 2;
+    string requestId = 3;
+}
