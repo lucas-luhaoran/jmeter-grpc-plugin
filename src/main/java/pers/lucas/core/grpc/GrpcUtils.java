@@ -8,8 +8,9 @@ import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.AbstractStub;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import pers.lucas.core.grpc.service.TestRequest;
+import pers.lucas.core.grpc.service.TestResponse;
+import pers.lucas.core.grpc.service.TestServiceGrpc;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -60,6 +61,5 @@ public class GrpcUtils {
 
     public static String MessageToJson(Message message, Class<? extends Message> messageClass) throws InvalidProtocolBufferException {
         return JsonFormat.printer().print(messageClass.cast(message));
-
     }
 }

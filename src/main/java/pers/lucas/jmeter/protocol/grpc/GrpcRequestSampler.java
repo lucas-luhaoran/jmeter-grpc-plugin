@@ -1,21 +1,31 @@
 package pers.lucas.jmeter.protocol.grpc;
 
-import io.grpc.ManagedChannel;
+import io.grpc.*;
+
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.*;
+
+import org.apache.jmeter.config.ConfigTestElement;
+import org.apache.jmeter.protocol.http.control.HeaderManager;
 import org.apache.jmeter.samplers.AbstractSampler;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.testbeans.TestBean;
 import org.apache.commons.lang3.StringUtils;
 
+import org.apache.jmeter.testelement.TestElement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pers.lucas.core.grpc.GrpcTestcaseEnum;
 import pers.lucas.core.grpc.GrpcUtils;
+import pers.lucas.core.grpc.HeaderClientInterceptor;
 
 
 // todo: metadata的ClientInterceptor的创建，metadata Manager的创建。
 // todo: 打包优化
 public class GrpcRequestSampler extends AbstractSampler implements TestBean {
+    private static final Logger log = LoggerFactory.getLogger(GrpcRequestSampler.class);
+
     private static final long serialVersionUID = 1L;
 
     public final static String DOMAIN = "GrpcSampler.domain";
@@ -24,9 +34,17 @@ public class GrpcRequestSampler extends AbstractSampler implements TestBean {
 
     private String testcase;
 
+    private static final Set<String> APPLIABLE_CONFIG_CLASSES = new HashSet<>(
+            Collections.singletonList(
+                    "org.apache.jmeter.protocol.http.gui.HeaderPanel"
+            ));
+
     public final static String[] testcaseList;
     public final static String defaultTestcase;
     private final static HashMap<String, GrpcTestcaseEnum> index = new HashMap<>();
+
+    private static final HashMap<String, String> requestHeaders = new HashMap<>();
+
 
     static {
         defaultTestcase = "TestService_doTest_v1";
@@ -102,7 +120,12 @@ public class GrpcRequestSampler extends AbstractSampler implements TestBean {
         try{
             // todo: json转proto对象耗时严重，10k需要100ms，待优化
             Object requestMessage = GrpcUtils.jsonToMessage(getRequestData(), info.getRequestMessageClass());
-            ManagedChannel channel = GrpcUtils.getChannel(getDomain(), getPort());
+
+            HeaderClientInterceptor interceptor = new HeaderClientInterceptor();
+            interceptor.setRequestHeaders(requestHeaders);
+
+            ManagedChannel channel = GrpcUtils.getChannel(getDomain(), getPort(), interceptor);
+
             Object responseMessage = GrpcUtils.doRequest(
                     channel,
                     info.getRequestMessageClass().cast(requestMessage),
@@ -116,6 +139,7 @@ public class GrpcRequestSampler extends AbstractSampler implements TestBean {
                     info.getResponseMessageClass().cast(responseMessage),
                     info.getResponseMessageClass()
             );
+            channel.shutdownNow();
         } catch (Exception e){
             setFailed(result);
             e.printStackTrace();
@@ -143,4 +167,24 @@ public class GrpcRequestSampler extends AbstractSampler implements TestBean {
         result.setSuccessful(false);
     }
 
+    @Override
+    public boolean applies(ConfigTestElement configElement) {
+        String guiClass = configElement.getProperty(TestElement.GUI_CLASS).getStringValue();
+        return APPLIABLE_CONFIG_CLASSES.contains(guiClass);
+    }
+
+    @Override
+    public void addTestElement(TestElement el) {
+        if (el instanceof HeaderManager) {
+            setHeaderManager((HeaderManager) el);
+        } else {
+            super.addTestElement(el);
+        }
+    }
+
+    public void setHeaderManager(HeaderManager headerManager){
+        for (int i = 0; i < headerManager.getHeaders().size(); i++) {
+            requestHeaders.put(headerManager.getHeader(i).getName(), headerManager.getHeader(i).getValue());
+        }
+    }
 }

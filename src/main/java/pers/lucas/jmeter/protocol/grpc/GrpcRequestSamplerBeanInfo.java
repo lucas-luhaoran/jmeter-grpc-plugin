@@ -28,7 +28,6 @@ public class GrpcRequestSamplerBeanInfo extends BeanInfoSupport {
         p.setValue(TAGS, GrpcRequestSampler.testcaseList);
         p.setValue(DEFAULT, GrpcRequestSampler.defaultTestcase);
 
-
         p = property("requestData", TypeEditor.TextAreaEditor);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
         p.setValue(DEFAULT, "{}");
